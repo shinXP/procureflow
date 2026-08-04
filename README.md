@@ -136,30 +136,41 @@ composer run lint:check
 
 The current automated suite contains 125 passing tests and 560 assertions covering authentication, role access, master data, purchase requests, approvals, settings, and validation behavior.
 
-## Deployment
+## Free deployment on Koyeb
 
-ProcureFlow is not a static React application. Inertia depends on a running Laravel application for every route, authenticated session, validation response, and database query. The complete system therefore needs a host with:
+ProcureFlow includes a production `Dockerfile` for a free Koyeb web service and a free Koyeb PostgreSQL database. The container uses FrankenPHP, compiles the frontend assets, runs database migrations during startup, and serves Laravel from its `public` directory.
 
-- PHP 8.3 or newer and required PHP extensions
-- A persistent SQL database
-- Writable storage or an object-storage disk for uploaded product images
-- A web process pointing to Laravel's `public` directory
-- A queue worker when queued work is enabled
+1. In Koyeb, create a PostgreSQL Database Service using the `free` instance.
+2. Copy the database connection values from its **Connection Details** page.
+3. Create a Web Service from this GitHub repository and select the Dockerfile builder.
+4. Select the `free` web instance and expose port `8000` using HTTP.
+5. Add the environment values below, generating `APP_KEY` locally with `php artisan key:generate --show`.
 
-Recommended deployment flow:
-
-```bash
-composer install --no-dev --optimize-autoloader
-npm ci
-npm run build
-php artisan migrate --force
-php artisan storage:link
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+```dotenv
+APP_NAME=ProcureFlow
+APP_ENV=production
+APP_DEBUG=false
+APP_KEY=<generated-app-key>
+APP_URL=https://{{ KOYEB_PUBLIC_DOMAIN }}
+LOG_CHANNEL=stderr
+LOG_LEVEL=warning
+DB_CONNECTION=pgsql
+DB_HOST=<database-hostname>
+DB_PORT=5432
+DB_DATABASE=<database-name>
+DB_USERNAME=<database-role>
+DB_PASSWORD=<database-password>
+DB_SSLMODE=require
+SESSION_DRIVER=database
+CACHE_STORE=database
+QUEUE_CONNECTION=sync
+SESSION_SECURE_COOKIE=true
+SEED_DEMO_DATA=true
 ```
 
-Set `APP_ENV=production`, `APP_DEBUG=false`, a secure `APP_KEY`, the public `APP_URL`, production database credentials, and the appropriate mail, cache, session, queue, and filesystem values in the hosting provider.
+`SEED_DEMO_DATA=true` creates the documented portfolio accounts and sample catalog. Remove it after the first successful deployment if you do not want future starts to restore the demo records.
+
+The free web instance has an ephemeral filesystem. Database records remain in PostgreSQL, but locally uploaded product and profile images can disappear when the service restarts. Use an S3-compatible object-storage disk before relying on uploads in a production system.
 
 ### About Netlify
 
